@@ -1,6 +1,6 @@
 # Packaging and releases
 
-Every push to `main` that passes tests publishes a new version.
+Every push to `main` that passes tests publishes a new version of **SpikePrimePythonSDK**.
 
 ## What CI does
 
@@ -18,23 +18,24 @@ Manual run: Actions → Release → Run workflow.
 ## Install from the Pages index
 
 ```bash
-pip install spikeprime \
-  --index-url https://dixonsolutions.github.io/spikeprime/simple/ \
+pip install SpikePrimePythonSDK \
+  --index-url https://dixonsolutions.github.io/SpikePrimePythonSDK/simple/ \
   --extra-index-url https://pypi.org/simple
 ```
 
 `--index-url` is this project’s index. `--extra-index-url` is PyPI, so `bleak` still resolves.
+Import the library as `import spikeprime`.
 
 Git, without Pages:
 
 ```bash
-pip install git+https://github.com/dixonSolutions/spikeprime.git
+pip install git+https://github.com/dixonSolutions/SpikePrimePythonSDK.git
 ```
 
 A specific tag:
 
 ```bash
-pip install git+https://github.com/dixonSolutions/spikeprime.git@v0.1.1
+pip install git+https://github.com/dixonSolutions/SpikePrimePythonSDK.git@v0.1.1
 ```
 
 ## Local build
@@ -45,8 +46,8 @@ python -m build
 python scripts/write_simple_index.py \
   --dist dist \
   --site site \
-  --repo-url https://github.com/dixonSolutions/spikeprime \
-  --pages-url https://dixonsolutions.github.io/spikeprime \
+  --repo-url https://github.com/dixonSolutions/SpikePrimePythonSDK \
+  --pages-url https://dixonsolutions.github.io/SpikePrimePythonSDK \
   --version 0.1.0
 ```
 

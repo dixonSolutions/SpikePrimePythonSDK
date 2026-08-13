@@ -1,6 +1,7 @@
-# spikeprime
+# SpikePrimePythonSDK
 
 Unofficial Python SDK for **SPIKE Prime HubOS 3** over Bluetooth Low Energy.
+The import and CLI stay `spikeprime`.
 
 It implements the protocol published by the LEGO Group at
 [lego.github.io/spike-prime-docs](https://lego.github.io/spike-prime-docs/).
@@ -11,15 +12,15 @@ This project is not affiliated with, authorized by, or endorsed by the LEGO Grou
 From the GitHub Pages package index:
 
 ```bash
-pip install spikeprime \
-  --index-url https://dixonsolutions.github.io/spikeprime/simple/ \
+pip install SpikePrimePythonSDK \
+  --index-url https://dixonsolutions.github.io/SpikePrimePythonSDK/simple/ \
   --extra-index-url https://pypi.org/simple
 ```
 
 From git:
 
 ```bash
-pip install git+https://github.com/dixonSolutions/spikeprime.git
+pip install git+https://github.com/dixonSolutions/SpikePrimePythonSDK.git
 ```
 
 For local development:

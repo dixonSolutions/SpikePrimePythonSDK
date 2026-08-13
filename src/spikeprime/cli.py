@@ -21,7 +21,7 @@ _HOST_MARKERS = (
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="spikeprime",
-        description="Talk to a SPIKE Prime hub over Bluetooth (HubOS 3).",
+        description="SpikePrimePythonSDK: talk to a SPIKE Prime hub over Bluetooth (HubOS 3).",
     )
     parser.add_argument("--address", help="Connect to this BLE address")
     parser.add_argument("--name", help="Connect to a hub whose advertised name matches")

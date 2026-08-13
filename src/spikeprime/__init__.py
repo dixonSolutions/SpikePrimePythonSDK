@@ -1,4 +1,4 @@
-"""Unofficial Python SDK for SPIKE Prime HubOS 3 over Bluetooth."""
+"""SpikePrimePythonSDK: unofficial host SDK for SPIKE Prime HubOS 3 over Bluetooth."""
 
 from spikeprime.client import Hub, HubAdvertisement, connect, scan
 from spikeprime.devices import (

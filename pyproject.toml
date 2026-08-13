@@ -3,13 +3,13 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "spikeprime"
+name = "SpikePrimePythonSDK"
 version = "0.1.0"
 description = "Unofficial Python SDK for SPIKE Prime HubOS 3 over Bluetooth Low Energy"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "spikeprime contributors" }]
+authors = [{ name = "SpikePrimePythonSDK contributors" }]
 keywords = ["spike", "prime", "hubos", "robotics", "ble", "micropython"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -38,9 +38,9 @@ dev = [
 spikeprime = "spikeprime.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/dixonSolutions/spikeprime"
-Documentation = "https://dixonsolutions.github.io/spikeprime/"
-Issues = "https://github.com/dixonSolutions/spikeprime/issues"
+Homepage = "https://github.com/dixonSolutions/SpikePrimePythonSDK"
+Documentation = "https://dixonsolutions.github.io/SpikePrimePythonSDK/"
+Issues = "https://github.com/dixonSolutions/SpikePrimePythonSDK/issues"
 Protocol = "https://lego.github.io/spike-prime-docs/"
 
 [tool.setuptools.packages.find]

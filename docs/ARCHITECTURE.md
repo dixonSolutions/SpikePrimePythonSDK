@@ -1,8 +1,9 @@
 # Architecture
 
-`spikeprime` is a host-side SDK for HubOS 3. Programs still run on the hub.
-This library talks to the hub over Bluetooth Low Energy using the protocol
-documented at [lego.github.io/spike-prime-docs](https://lego.github.io/spike-prime-docs/).
+**SpikePrimePythonSDK** is a host-side SDK for HubOS 3. The Python import is
+`spikeprime`. Programs still run on the hub. This library talks to the hub over
+Bluetooth Low Energy using the protocol documented at
+[lego.github.io/spike-prime-docs](https://lego.github.io/spike-prime-docs/).
 
 ```
 Your Python script

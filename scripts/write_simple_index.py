@@ -6,9 +6,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import html
+import re
+from collections import defaultdict
 from pathlib import Path
 
-PACKAGE = "spikeprime"
+PROJECT = "SpikePrimePythonSDK"
+
+
+def pep503_name(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def sha256_file(path: Path) -> str:
@@ -27,41 +33,69 @@ def dist_files(directory: Path) -> list[Path]:
     return sorted(files, key=lambda path: path.name)
 
 
-def write_simple_index(files: list[Path], dest: Path, package: str = PACKAGE) -> None:
-    simple = dest / "simple"
-    package_dir = simple / package
-    package_dir.mkdir(parents=True, exist_ok=True)
+def distribution_name(path: Path) -> str:
+    name = path.name
+    if name.endswith(".tar.gz"):
+        return name[: -len(".tar.gz")].rsplit("-", 1)[0]
+    if name.endswith(".whl"):
+        return name.split("-", 1)[0]
+    return path.stem
 
+
+def write_simple_index(files: list[Path], dest: Path) -> list[str]:
+    grouped: dict[str, list[Path]] = defaultdict(list)
     for path in files:
-        target = package_dir / path.name
-        if path.resolve() != target.resolve():
-            target.write_bytes(path.read_bytes())
+        grouped[pep503_name(distribution_name(path))].append(path)
 
-    links = []
-    for path in sorted(package_dir.iterdir(), key=lambda item: item.name):
-        if path.name == "index.html" or not path.is_file():
-            continue
-        digest = sha256_file(path)
-        name = html.escape(path.name)
-        links.append(f'    <a href="{name}#sha256={digest}" data-requires-python="&gt;=3.10">{name}</a><br/>')
+    simple = dest / "simple"
+    simple.mkdir(parents=True, exist_ok=True)
+    packages = sorted(grouped)
 
-    package_dir.joinpath("index.html").write_text(
-        "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
-        f"<title>{html.escape(package)}</title></head>\n<body>\n"
-        + "\n".join(links)
-        + "\n</body></html>\n",
-        encoding="utf-8",
+    for package, package_files in grouped.items():
+        package_dir = simple / package
+        package_dir.mkdir(parents=True, exist_ok=True)
+        for path in package_files:
+            target = package_dir / path.name
+            if path.resolve() != target.resolve():
+                target.write_bytes(path.read_bytes())
+        links = []
+        for path in sorted(package_dir.iterdir(), key=lambda item: item.name):
+            if path.name == "index.html" or not path.is_file():
+                continue
+            digest = sha256_file(path)
+            name = html.escape(path.name)
+            links.append(
+                f'    <a href="{name}#sha256={digest}" data-requires-python="&gt;=3.10">{name}</a><br/>'
+            )
+        package_dir.joinpath("index.html").write_text(
+            "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
+            f"<title>{html.escape(package)}</title></head>\n<body>\n"
+            + "\n".join(links)
+            + "\n</body></html>\n",
+            encoding="utf-8",
+        )
+
+    package_links = "\n".join(
+        f'    <a href="{html.escape(name)}/">{html.escape(name)}</a><br/>' for name in packages
     )
     simple.joinpath("index.html").write_text(
         "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\">"
         "<title>simple</title></head>\n<body>\n"
-        f'    <a href="{html.escape(package)}/">{html.escape(package)}</a>\n'
-        "</body></html>\n",
+        + package_links
+        + "\n</body></html>\n",
         encoding="utf-8",
     )
+    return packages
 
 
-def write_home(dest: Path, *, repo_url: str, pages_url: str, version: str) -> None:
+def write_home(
+    dest: Path,
+    *,
+    repo_url: str,
+    pages_url: str,
+    version: str,
+    install_name: str = PROJECT,
+) -> None:
     simple_url = pages_url.rstrip("/") + "/simple/"
     dest.joinpath("index.html").write_text(
         f"""<!DOCTYPE html>
@@ -69,7 +103,7 @@ def write_home(dest: Path, *, repo_url: str, pages_url: str, version: str) -> No
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>spikeprime</title>
+  <title>{html.escape(install_name)}</title>
   <style>
     :root {{ color-scheme: light dark; }}
     body {{
@@ -93,13 +127,13 @@ def write_home(dest: Path, *, repo_url: str, pages_url: str, version: str) -> No
   </style>
 </head>
 <body>
-  <h1>spikeprime</h1>
+  <h1>{html.escape(install_name)}</h1>
   <p class="muted">Unofficial HubOS 3 SDK. Latest release {html.escape(version)}.</p>
   <p>Install from this GitHub Pages package index (dependencies still come from PyPI):</p>
-  <pre><code>pip install spikeprime \\
+  <pre><code>pip install {html.escape(install_name)} \\
   --index-url {html.escape(simple_url)} \\
   --extra-index-url https://pypi.org/simple</code></pre>
-  <p>Or install the git default branch:</p>
+  <p>Import remains <code>import spikeprime</code>. Or install the git default branch:</p>
   <pre><code>pip install git+{html.escape(repo_url)}.git</code></pre>
   <p><a href="{html.escape(repo_url)}">Source</a> · <a href="simple/">PEP 503 index</a></p>
 </body>
@@ -117,6 +151,7 @@ def main() -> None:
     parser.add_argument("--repo-url", required=True)
     parser.add_argument("--pages-url", required=True)
     parser.add_argument("--version", required=True)
+    parser.add_argument("--install-name", default=PROJECT)
     args = parser.parse_args()
 
     args.site.mkdir(parents=True, exist_ok=True)
@@ -129,6 +164,7 @@ def main() -> None:
         repo_url=args.repo_url,
         pages_url=args.pages_url,
         version=args.version,
+        install_name=args.install_name,
     )
 
 
