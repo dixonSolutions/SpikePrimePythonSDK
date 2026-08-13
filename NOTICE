@@ -1,0 +1,15 @@
+spikeprime
+Copyright 2026 spikeprime contributors
+
+This product is an independent implementation of the SPIKE Prime HubOS 3
+Bluetooth protocol described in:
+
+  LEGO Group, "SPIKE Prime protocol documentation"
+  https://github.com/LEGO/spike-prime-docs
+  https://lego.github.io/spike-prime-docs/
+
+That documentation is Copyright 2024 The LEGO Group and licensed under
+Apache License 2.0 with a modified trademarks clause. This project is not
+affiliated with, authorized by, or endorsed by the LEGO Group.
+
+LEGO, SPIKE, and MINDSTORMS are trademarks of the LEGO Group.
