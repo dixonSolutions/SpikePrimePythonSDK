@@ -462,13 +462,22 @@ class Hub:
 
     async def start(self, slot: int = 0) -> None:
         _check_slot(slot)
-        await self._ack(
-            ProgramFlowRequest(ProgramAction.START, slot),
-            ProgramFlowResponse,
-            f"start slot {slot}",
-        )
-        if self._running is not False:
-            self._running = True
+        # Marked before the request goes out, for two reasons. A short program
+        # can finish before its start is even acknowledged, and that stop
+        # notification has to win - setting the flag afterwards would resurrect
+        # a program that already ended. And over a session that runs several
+        # programs on one link, the flag is already False from the previous run,
+        # so a guarded assignment would never mark this one as running at all.
+        self._running = True
+        try:
+            await self._ack(
+                ProgramFlowRequest(ProgramAction.START, slot),
+                ProgramFlowResponse,
+                f"start slot {slot}",
+            )
+        except Exception:
+            self._running = None  # never confirmed, so the state is unknown
+            raise
 
     async def stop(self, slot: int = 0) -> None:
         _check_slot(slot)
