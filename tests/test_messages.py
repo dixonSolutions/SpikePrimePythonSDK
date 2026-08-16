@@ -1,8 +1,9 @@
 import uuid
 
-from spikeprime.enums import Color, Port
+from spikeprime.enums import Color, Port, ProductGroup, ProgramAction
 from spikeprime.devices import DeviceSnapshot
 from spikeprime.protocol.messages import (
+    BeginFirmwareUpdateRequest,
     ClearSlotRequest,
     ConsoleNotification,
     DeviceNotification,
@@ -10,9 +11,12 @@ from spikeprime.protocol.messages import (
     GetHubNameResponse,
     InfoRequest,
     InfoResponse,
+    ProgramFlowNotification,
     ProgramFlowRequest,
     SetHubNameRequest,
     StartFileUploadRequest,
+    StartFirmwareUploadRequest,
+    StartFirmwareUploadResponse,
     TransferChunkRequest,
     deserialize,
 )
@@ -47,8 +51,43 @@ def test_file_upload_and_chunk() -> None:
 
 
 def test_program_flow_and_slot() -> None:
-    _roundtrip(ProgramFlowRequest(stop=False, slot=3))
+    _roundtrip(ProgramFlowRequest(ProgramAction.START, 3))
+    _roundtrip(ProgramFlowNotification(ProgramAction.STOP))
     _roundtrip(ClearSlotRequest(7))
+
+
+def test_program_flow_uses_program_action_enum() -> None:
+    start = ProgramFlowRequest(ProgramAction.START, 3)
+    assert start.serialize() == bytes([0x1E, 0x00, 0x03])
+    assert not start.stop
+
+    stop = ProgramFlowRequest.deserialize(bytes([0x1E, 0x01, 0x03]))
+    assert stop.action is ProgramAction.STOP
+    assert stop.stop
+
+    notification = ProgramFlowNotification.deserialize(bytes([0x20, 0x01]))
+    assert notification.action is ProgramAction.STOP
+    assert notification.stop
+
+
+def test_info_response_product_group() -> None:
+    known = InfoResponse(3, 0, 12, 1, 2, 30, 512, 1024, 128, 0x0000)
+    assert known.product_group is ProductGroup.SPIKE_PRIME
+    unknown = InfoResponse(3, 0, 12, 1, 2, 30, 512, 1024, 128, 0x1234)
+    assert unknown.product_group is None
+
+
+def test_firmware_messages() -> None:
+    sha = bytes(range(20))
+    _roundtrip(StartFirmwareUploadRequest(sha, 0xDEADBEEF))
+    _roundtrip(BeginFirmwareUpdateRequest(sha, 0xDEADBEEF))
+    reply = StartFirmwareUploadResponse.deserialize(
+        StartFirmwareUploadResponse(success=True, bytes_uploaded=4096).serialize()
+    )
+    assert reply.success
+    assert reply.bytes_uploaded == 4096
+    nack = StartFirmwareUploadResponse.deserialize(bytes([0x0B, 0x01, 0, 0, 0, 0]))
+    assert not nack.success
 
 
 def test_hub_name_and_uuid() -> None:

@@ -70,6 +70,8 @@ Pass `name=` or `address=` to pick one.
 | `hub.enable_notifications(ms)` | IMU, motors, sensors, display |
 | `async for line in hub.console()` | `print()` from hub Python |
 | `async for snap in hub.device_updates()` | typed device snapshot |
+| `hub.tunnel(payload, high_priority=…)` | tunnel message |
+| `hub.update_firmware(image)` | firmware upload + update (resumable) |
 
 Robot programs still use the **on-hub** modules (`hub`, `motor`, `color_sensor`, …).
 This library is the host side: editor/CLI/agent talking to the brick.
@@ -82,6 +84,7 @@ spikeprime info
 spikeprime upload examples/hub/hello.py --slot 0 --run
 spikeprime console
 spikeprime stop --slot 0
+spikeprime firmware hub-firmware.bin --yes   # overwrites HubOS; see docs/PROTOCOL.md
 ```
 
 `examples/hub/` is hub MicroPython (`import runloop`, `from hub import …`).

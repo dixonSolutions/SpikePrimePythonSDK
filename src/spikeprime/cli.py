@@ -50,8 +50,26 @@ def main(argv: list[str] | None = None) -> int:
     console = sub.add_parser("console", help="Print hub stdout until Ctrl+C")
     console.add_argument("--notifications", type=int, default=0, metavar="MS")
 
+    firmware = sub.add_parser("firmware", help="Flash a firmware image to the hub")
+    firmware.add_argument("file", type=Path)
+    firmware.add_argument(
+        "--yes",
+        action="store_true",
+        help="Required. Confirms you want to overwrite the hub's firmware",
+    )
+    firmware.add_argument(
+        "--stage-only",
+        action="store_true",
+        help="Upload the image but do not begin the update",
+    )
+
     try:
         args = parser.parse_args(argv)
+        if args.command == "firmware":
+            problem = _firmware_objection(args)
+            if problem:
+                print(f"error: {problem}", file=sys.stderr)
+                return 2
         return asyncio.run(_dispatch(args))
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
@@ -103,11 +121,39 @@ async def _dispatch(args: argparse.Namespace) -> int:
             await hub.clear_slot(args.slot)
             print(f"Cleared slot {args.slot}.")
             return 0
+        if args.command == "firmware":
+            return await _firmware(hub, args)
         if args.command == "console":
             if args.notifications:
                 await hub.enable_notifications(args.notifications)
             print("Listening for console output. Ctrl+C to stop.")
             await _print_console(hub)
+    return 0
+
+
+def _firmware_objection(args: argparse.Namespace) -> str | None:
+    """Reasons to refuse a flash, checked before we go anywhere near a hub."""
+    if not args.file.is_file():
+        return f"{args.file} does not exist"
+    if not args.yes:
+        return (
+            "flashing firmware overwrites the hub's operating system and cannot "
+            "be undone from this SDK. Re-run with --yes to confirm."
+        )
+    return None
+
+
+async def _firmware(hub: Hub, args: argparse.Namespace) -> int:
+    def _progress(sent: int, total: int) -> None:
+        print(f"\r{sent}/{total} bytes ({sent * 100 // total}%)", end="")
+        sys.stdout.flush()
+
+    await hub.update_firmware(args.file, begin=not args.stage_only, progress=_progress)
+    print()
+    if args.stage_only:
+        print("Image staged. The hub was not updated.")
+    else:
+        print("Update started. The hub reboots into the updater and disconnects.")
     return 0
 
 

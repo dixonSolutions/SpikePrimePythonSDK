@@ -37,8 +37,28 @@ value covers the whole file.
 Program slots are `0`–`19`. Clearing an empty slot may return NACK; the SDK
 treats that as success unless `ignore_nack=False`.
 
-## Firmware messages
+## Firmware update
 
-`StartFirmwareUpload*` and `BeginFirmwareUpdate*` are implemented at the
-message layer. They are not exposed on `Hub` yet — flashing firmware is easy
-to get wrong and the official app is the safer path.
+`Hub.update_firmware()` runs the documented sequence:
+
+1. `StartFirmwareUploadRequest` carries the image's SHA-1 (the 20-byte "File
+   SHA") and its CRC32. The response reports how many bytes the hub already
+   holds for that SHA.
+2. `TransferChunkRequest` per chunk, carrying the running CRC32.
+3. `BeginFirmwareUpdateRequest` installs the image. The hub reboots into the
+   updater and drops the connection. Pass `begin=False` to stage without
+   installing.
+
+Resume uses the byte count from step 1: chunks the hub already has are skipped
+but still folded into the running CRC. Because that CRC is accumulated per
+chunk, a resume offset that is not a multiple of the hub's chunk size cannot be
+reproduced, and the SDK raises rather than sending a CRC the hub will reject.
+
+Flashing firmware overwrites the hub's operating system. The CLI requires
+`--yes`.
+
+## Message priority
+
+`0x01` marks a high-priority frame. `Hub._send()` and `Hub.tunnel()` take
+`high_priority=`; everything else is sent as low priority, which is what the
+hub expects for normal request/response traffic.
