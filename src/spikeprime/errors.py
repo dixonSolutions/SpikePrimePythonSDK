@@ -23,3 +23,7 @@ class HubNackError(HubError):
 
 class HubTimeoutError(HubError):
     """A request did not receive its matching response in time."""
+
+
+class BuildError(Exception):
+    """A hub project could not be bundled into a single uploadable file."""

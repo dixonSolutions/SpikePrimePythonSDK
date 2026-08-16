@@ -9,6 +9,9 @@ Bluetooth Low Energy using the protocol documented at
 Your Python script
         │
         ▼
+   spikeprime.build        multi-module project -> one slot-sized file
+        │
+        ▼
    spikeprime.Hub          high-level: scan, connect, upload, start/stop
         │
         ▼
@@ -28,6 +31,7 @@ Your Python script
 
 | Module | Responsibility |
 |---|---|
+| `spikeprime.build` | Inline a multi-module project into one uploadable file |
 | `spikeprime.client` | Connection lifecycle, request/response matching, file transfer |
 | `spikeprime.devices` | Parsed sensor/motor snapshots from `DeviceNotification` |
 | `spikeprime.protocol.messages` | Binary layout of every HubOS message |

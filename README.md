@@ -72,9 +72,15 @@ Pass `name=` or `address=` to pick one.
 | `async for snap in hub.device_updates()` | typed device snapshot |
 | `hub.tunnel(payload, high_priority=…)` | tunnel message |
 | `hub.update_firmware(image)` | firmware upload + update (resumable) |
+| `bundle("robot/main.py")` | multi-file project into one slot-sized file |
 
 Robot programs still use the **on-hub** modules (`hub`, `motor`, `color_sensor`, …).
 This library is the host side: editor/CLI/agent talking to the brick.
+
+A slot holds one file, but your source tree does not have to. `spikeprime build`
+inlines a multi-module project into the single file a slot wants, and `upload`
+does it automatically when the entry file imports from the project. See
+[docs/BUILD.md](docs/BUILD.md).
 
 ## CLI
 
@@ -82,6 +88,8 @@ This library is the host side: editor/CLI/agent talking to the brick.
 spikeprime scan
 spikeprime info
 spikeprime upload examples/hub/hello.py --slot 0 --run
+spikeprime build examples/hub/robot/main.py -o build/program.py
+spikeprime upload examples/hub/robot/main.py --run   # bundles the project first
 spikeprime console
 spikeprime stop --slot 0
 spikeprime firmware hub-firmware.bin --yes   # overwrites HubOS; see docs/PROTOCOL.md

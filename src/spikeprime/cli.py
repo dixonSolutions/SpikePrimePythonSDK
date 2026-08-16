@@ -7,8 +7,9 @@ import asyncio
 import sys
 from pathlib import Path
 
+from spikeprime.build import bundle, has_local_imports
 from spikeprime.client import Hub, connect, scan
-from spikeprime.errors import HubError
+from spikeprime.errors import BuildError, HubError
 
 _HOST_MARKERS = (
     b"from spikeprime",
@@ -32,11 +33,24 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("scan", help="List nearby hubs")
     sub.add_parser("info", help="Print firmware and identity")
 
+    build = sub.add_parser(
+        "build", help="Bundle a multi-file hub project into one uploadable file"
+    )
+    build.add_argument("entry", type=Path, help="The program's entry point")
+    build.add_argument("-o", "--output", type=Path, help="Write here instead of stdout")
+    build.add_argument("--root", type=Path, help="Project root imports resolve against")
+
     upload = sub.add_parser("upload", help="Upload a Python file to a slot")
     upload.add_argument("file", type=Path)
     upload.add_argument("--slot", type=int, default=0)
     upload.add_argument("--filename", default="program.py")
     upload.add_argument("--run", action="store_true", help="Start the program after upload")
+    upload.add_argument("--root", type=Path, help="Project root imports resolve against")
+    upload.add_argument(
+        "--no-bundle",
+        action="store_true",
+        help="Upload the file as-is, even if it imports other project modules",
+    )
 
     run = sub.add_parser("run", help="Start the program in a slot")
     run.add_argument("--slot", type=int, default=0)
@@ -70,10 +84,15 @@ def main(argv: list[str] | None = None) -> int:
             if problem:
                 print(f"error: {problem}", file=sys.stderr)
                 return 2
+        if args.command == "build":
+            return _build(args)
         return asyncio.run(_dispatch(args))
     except KeyboardInterrupt:
         print("Interrupted.", file=sys.stderr)
         return 130
+    except BuildError as exc:
+        print(f"build error: {exc}", file=sys.stderr)
+        return 1
     except HubError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
@@ -102,6 +121,7 @@ async def _dispatch(args: argparse.Namespace) -> int:
                     file=sys.stderr,
                 )
                 return 2
+            source = _maybe_bundle(args, source)
             await hub.upload(source, slot=args.slot, filename=args.filename)
             print(f"Uploaded {args.file} to slot {args.slot}.")
             if args.run:
@@ -129,6 +149,34 @@ async def _dispatch(args: argparse.Namespace) -> int:
             print("Listening for console output. Ctrl+C to stop.")
             await _print_console(hub)
     return 0
+
+
+def _build(args: argparse.Namespace) -> int:
+    result = bundle(args.entry, root=args.root)
+    for note in result.notes:
+        print(f"note: {note}", file=sys.stderr)
+    if args.output:
+        args.output.write_text(result.source, encoding="utf-8")
+        print(
+            f"Bundled {len(result.modules)} modules into {args.output} "
+            f"({len(result.source.encode()):,} bytes).",
+            file=sys.stderr,
+        )
+    else:
+        print(result.source, end="")
+    return 0
+
+
+def _maybe_bundle(args: argparse.Namespace, source: bytes) -> bytes:
+    """Inline local imports before upload, unless the caller opted out."""
+    if args.no_bundle or not has_local_imports(args.file, root=args.root):
+        return source
+    result = bundle(args.file, root=args.root)
+    for note in result.notes:
+        print(f"note: {note}", file=sys.stderr)
+    others = len(result.modules) - 1
+    print(f"Bundled {others} imported module{'' if others == 1 else 's'} into the upload.")
+    return result.encode()
 
 
 def _firmware_objection(args: argparse.Namespace) -> str | None:
