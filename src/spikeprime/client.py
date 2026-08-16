@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeVar
@@ -214,6 +215,28 @@ class Hub:
             self._info.max_chunk_size,
         )
 
+    async def reconnect(self, *, timeout: float = DEFAULT_SCAN_TIMEOUT) -> None:
+        """Re-establish a dropped link, keeping this Hub and its callbacks.
+
+        The hub is located again by address, because a BLEDevice handle goes
+        stale once the peer has gone away, and a power-cycled hub comes back
+        behind a fresh handle. Callbacks, queues and the console history
+        registered on this object all survive, so a caller can keep using the
+        same Hub across a drop instead of rebuilding its session.
+
+        Does nothing if the link is already up.
+        """
+        if self._client.is_connected:
+            return
+        # Tear the old client down before rebuilding; BlueZ keeps per-client state.
+        with suppress(Exception):
+            await asyncio.wait_for(self._client.disconnect(), timeout=2)
+        device = await self._find(address=self.address, name=None, timeout=timeout)
+        self._device = device
+        self._client = BleakClient(device, disconnected_callback=self._on_disconnect)
+        await self.open()
+        logger.info("reconnected to %s", self.address)
+
     async def close(self) -> None:
         if self._client.is_connected:
             try:
@@ -381,8 +404,13 @@ class Hub:
     async def wait_disconnected(self) -> None:
         await self._disconnected.wait()
 
-    async def wait_until_stopped(self, timeout: float | None = 30.0) -> None:
-        """Block until the hub reports the running program has stopped."""
+    async def wait_until_stopped(self, timeout: float | None = None) -> None:
+        """Block until the hub reports the running program has stopped.
+
+        Waits indefinitely by default: a hub program runs for as long as it
+        likes, and a caller that gives up mid-run would disconnect a hub that
+        is working perfectly well. Pass a timeout to cap the wait explicitly.
+        """
         done = asyncio.Event()
 
         def _on_program(stopped: bool) -> None:
@@ -390,12 +418,17 @@ class Hub:
                 done.set()
 
         self.on_program(_on_program)
-        if self._running is False:
-            return
         try:
+            if self._running is False:
+                return
             await asyncio.wait_for(done.wait(), timeout=timeout)
         except asyncio.TimeoutError as exc:
             raise HubTimeoutError(f"program did not stop within {timeout}s") from exc
+        finally:
+            # Without this the callback list grows on every call, which matters
+            # for a long-lived session that runs many programs over one link.
+            with suppress(ValueError):
+                self._program_callbacks.remove(_on_program)
 
     async def get_name(self) -> str:
         reply = await self._request(GetHubNameRequest(), GetHubNameResponse)

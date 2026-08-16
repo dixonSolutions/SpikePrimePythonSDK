@@ -72,6 +72,27 @@ Pass `name=` or `address=` to pick one.
 | `async for snap in hub.device_updates()` | typed device snapshot |
 | `hub.tunnel(payload, high_priority=…)` | tunnel message |
 | `hub.update_firmware(image)` | firmware upload + update (resumable) |
+| `hub.wait_until_stopped()` | block until the running program ends |
+| `hub.reconnect()` | rebuild a dropped link, keeping the same `Hub` |
+
+### Holding one connection open
+
+Connecting costs a BLE scan, so a session that runs several programs should keep
+one `Hub` rather than reconnecting per run. `wait_until_stopped()` waits with no
+timeout by default — a hub program runs for as long as it likes, and a host that
+gives up mid-run would disconnect a hub that is working perfectly well. Pass
+`timeout=` only when you genuinely want to cap the wait.
+
+```python
+async with await connect(name="My Hub") as hub:
+    for program in programs:
+        await hub.run(program, slot=0)
+        await hub.wait_until_stopped()   # no cap; the link stays up between runs
+```
+
+If the link does drop, `await hub.reconnect()` finds the hub again by address and
+rebuilds the connection. Callbacks and queues registered on the `Hub` survive, so
+the session continues instead of being rebuilt.
 
 Robot programs still use the **on-hub** modules (`hub`, `motor`, `color_sensor`, …).
 This library is the host side: editor/CLI/agent talking to the brick.

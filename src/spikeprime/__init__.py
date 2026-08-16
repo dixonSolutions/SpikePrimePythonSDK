@@ -25,7 +25,7 @@ from spikeprime.enums import (
 )
 from spikeprime.errors import HubError, HubNackError, HubNotFoundError, HubProtocolError, HubTimeoutError
 
-__version__ = "0.1.0"
+__version__ = "0.1.5"
 __all__ = [
     "Battery",
     "Color",
