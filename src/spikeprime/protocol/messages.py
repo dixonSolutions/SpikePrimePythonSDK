@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar
 
-from spikeprime.enums import ResponseStatus
+from spikeprime.enums import ProductGroup, ProgramAction, ResponseStatus
 from spikeprime.errors import HubProtocolError
 
 
@@ -137,6 +137,14 @@ class InfoResponse(Message):
             max_chunk_size,
             product_group_device,
         )
+
+    @property
+    def product_group(self) -> ProductGroup | None:
+        """The product group as an enum, or None if the hub reports an unknown one."""
+        try:
+            return ProductGroup(self.product_group_device)
+        except ValueError:
+            return None
 
     @property
     def rpc_version(self) -> str:
@@ -329,17 +337,21 @@ class DeviceUuidResponse(Message):
 @dataclass
 class ProgramFlowRequest(Message):
     ID: ClassVar[int] = 0x1E
-    stop: bool
+    action: ProgramAction
     slot: int
 
     def serialize(self) -> bytes:
-        return struct.pack("<BBB", self.ID, int(self.stop), self.slot)
+        return struct.pack("<BBB", self.ID, ProgramAction(self.action), self.slot)
 
     @classmethod
     def deserialize(cls, data: bytes) -> ProgramFlowRequest:
         _require_id(data, cls.ID)
-        _, stop, slot = struct.unpack("<BBB", data[:3])
-        return cls(stop=bool(stop), slot=slot)
+        _, action, slot = struct.unpack("<BBB", data[:3])
+        return cls(action=ProgramAction(action), slot=slot)
+
+    @property
+    def stop(self) -> bool:
+        return self.action is ProgramAction.STOP
 
 
 class ProgramFlowResponse(StatusMessage):
@@ -349,16 +361,20 @@ class ProgramFlowResponse(StatusMessage):
 @dataclass
 class ProgramFlowNotification(Message):
     ID: ClassVar[int] = 0x20
-    stop: bool
+    action: ProgramAction
 
     def serialize(self) -> bytes:
-        return struct.pack("<BB", self.ID, int(self.stop))
+        return struct.pack("<BB", self.ID, ProgramAction(self.action))
 
     @classmethod
     def deserialize(cls, data: bytes) -> ProgramFlowNotification:
         _require_id(data, cls.ID)
-        _, stop = struct.unpack("<BB", data[:2])
-        return cls(stop=bool(stop))
+        _, action = struct.unpack("<BB", data[:2])
+        return cls(action=ProgramAction(action))
+
+    @property
+    def stop(self) -> bool:
+        return self.action is ProgramAction.STOP
 
 
 @dataclass

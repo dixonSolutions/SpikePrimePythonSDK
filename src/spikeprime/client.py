@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
@@ -16,10 +17,13 @@ from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
 
 from spikeprime.devices import DeviceSnapshot
+from spikeprime.enums import ProgramAction
 from spikeprime.errors import HubNackError, HubNotFoundError, HubProtocolError, HubTimeoutError
 from spikeprime.protocol.framing import FrameAssembler, encode_frame, split_packets
 from spikeprime.protocol.crc import crc32
 from spikeprime.protocol.messages import (
+    BeginFirmwareUpdateRequest,
+    BeginFirmwareUpdateResponse,
     ClearSlotRequest,
     ClearSlotResponse,
     ConsoleNotification,
@@ -40,6 +44,8 @@ from spikeprime.protocol.messages import (
     SetHubNameResponse,
     StartFileUploadRequest,
     StartFileUploadResponse,
+    StartFirmwareUploadRequest,
+    StartFirmwareUploadResponse,
     TransferChunkRequest,
     TransferChunkResponse,
     TunnelMessage,
@@ -61,6 +67,7 @@ SLOTS = range(20)
 ConsoleCallback = Callable[[str], Awaitable[None] | None]
 DeviceCallback = Callable[[DeviceSnapshot], Awaitable[None] | None]
 ProgramCallback = Callable[[bool], Awaitable[None] | None]
+ProgressCallback = Callable[[int, int], None]
 
 
 @dataclass(frozen=True)
@@ -293,8 +300,8 @@ class Hub:
         if pending is not None and not pending[1].done():
             pending[1].set_exception(HubProtocolError(reason))
 
-    async def _send(self, message: Message) -> None:
-        frame = encode_frame(message.serialize())
+    async def _send(self, message: Message, *, high_priority: bool = False) -> None:
+        frame = encode_frame(message.serialize(), high_priority=high_priority)
         packet_size = self._info.max_packet_size if self._info else len(frame)
         logger.debug("send %s (%s bytes)", message, len(frame))
         for packet in split_packets(frame, packet_size):
@@ -305,13 +312,15 @@ class Hub:
         message: Message,
         response_type: type[TMessage],
         timeout: float = DEFAULT_REQUEST_TIMEOUT,
+        *,
+        high_priority: bool = False,
     ) -> TMessage:
         async with self._request_lock:
             loop = asyncio.get_running_loop()
             future: asyncio.Future[Message] = loop.create_future()
             self._pending = (response_type.ID, future)
             try:
-                await self._send(message)
+                await self._send(message, high_priority=high_priority)
                 try:
                     reply = await asyncio.wait_for(future, timeout)
                 except asyncio.TimeoutError as exc:
@@ -334,8 +343,11 @@ class Hub:
         *,
         ignore_nack: bool = False,
         timeout: float = DEFAULT_REQUEST_TIMEOUT,
+        high_priority: bool = False,
     ) -> Message:
-        reply = await self._request(message, response_type, timeout=timeout)
+        reply = await self._request(
+            message, response_type, timeout=timeout, high_priority=high_priority
+        )
         success = getattr(reply, "success", True)
         if not success and not ignore_nack:
             raise HubNackError(operation)
@@ -418,7 +430,7 @@ class Hub:
     async def start(self, slot: int = 0) -> None:
         _check_slot(slot)
         await self._ack(
-            ProgramFlowRequest(stop=False, slot=slot),
+            ProgramFlowRequest(ProgramAction.START, slot),
             ProgramFlowResponse,
             f"start slot {slot}",
         )
@@ -428,7 +440,7 @@ class Hub:
     async def stop(self, slot: int = 0) -> None:
         _check_slot(slot)
         await self._ack(
-            ProgramFlowRequest(stop=True, slot=slot),
+            ProgramFlowRequest(ProgramAction.STOP, slot),
             ProgramFlowResponse,
             f"stop slot {slot}",
         )
@@ -453,16 +465,85 @@ class Hub:
             StartFileUploadResponse,
             "start file upload",
         )
+        await self._transfer_chunks(data)
+
+    async def update_firmware(
+        self,
+        firmware: str | Path | bytes,
+        *,
+        begin: bool = True,
+        progress: ProgressCallback | None = None,
+    ) -> None:
+        """Upload a firmware image and ask the hub to install it.
+
+        Follows the documented sequence: StartFirmwareUploadRequest, then a
+        TransferChunkRequest per chunk, then BeginFirmwareUpdateRequest. The hub
+        reports how many bytes it already holds for this image, so an
+        interrupted upload resumes instead of restarting.
+
+        The hub reboots into the updater once the update begins, which drops the
+        BLE connection. Pass begin=False to stage the image without installing.
+        """
+        data = _read_binary(firmware)
+        if not data:
+            raise ValueError("firmware image is empty")
+        file_sha = hashlib.sha1(data).digest()
+        file_crc = crc32(data)
+
+        reply = await self._request(
+            StartFirmwareUploadRequest(file_sha, file_crc), StartFirmwareUploadResponse
+        )
+        if not reply.success:
+            raise HubNackError("start firmware upload")
+        already = reply.bytes_uploaded
+        if already > len(data):
+            raise HubProtocolError(
+                f"hub reports {already} bytes uploaded for an image of {len(data)} bytes"
+            )
+        if already:
+            logger.info("resuming firmware upload at %s/%s bytes", already, len(data))
+
+        await self._transfer_chunks(data, already=already, progress=progress)
+
+        if not begin:
+            return
+        await self._ack(
+            BeginFirmwareUpdateRequest(file_sha, file_crc),
+            BeginFirmwareUpdateResponse,
+            "begin firmware update",
+        )
+        logger.info("firmware update started; the hub reboots and disconnects now")
+
+    async def _transfer_chunks(
+        self,
+        data: bytes,
+        *,
+        already: int = 0,
+        progress: ProgressCallback | None = None,
+    ) -> None:
+        """Send data as TransferChunkRequests, carrying the running CRC32 forward."""
         chunk_size = self.info.max_chunk_size
+        if chunk_size <= 0:
+            raise HubProtocolError(f"hub reported an unusable chunk size of {chunk_size}")
+        if already % chunk_size:
+            raise HubProtocolError(
+                f"hub resumed at {already} bytes, which is not a multiple of the "
+                f"{chunk_size}-byte chunk size, so the running CRC cannot be resumed"
+            )
         running = 0
         for offset in range(0, len(data), chunk_size):
             chunk = data[offset : offset + chunk_size]
             running = crc32(chunk, running)
+            sent = offset + len(chunk)
+            if sent <= already:
+                continue  # the hub already has this chunk; its CRC still counts
             await self._ack(
                 TransferChunkRequest(running, chunk),
                 TransferChunkResponse,
                 f"transfer chunk at {offset}",
             )
+            if progress is not None:
+                progress(sent, len(data))
 
     async def run(
         self,
@@ -475,8 +556,8 @@ class Hub:
         await self.upload(source, slot=slot, filename=filename)
         await self.start(slot)
 
-    async def tunnel(self, payload: bytes) -> None:
-        await self._send(TunnelMessage(payload))
+    async def tunnel(self, payload: bytes, *, high_priority: bool = False) -> None:
+        await self._send(TunnelMessage(payload), high_priority=high_priority)
 
 
 def _check_slot(slot: int) -> None:
@@ -491,3 +572,10 @@ def _read_source(source: str | Path | bytes) -> bytes:
     if isinstance(source, Path) or path.is_file():
         return path.read_bytes()
     return source.encode("utf-8")
+
+
+def _read_binary(image: str | Path | bytes) -> bytes:
+    """Like _read_source, but a str is always a path — firmware is never inline."""
+    if isinstance(image, bytes):
+        return image
+    return Path(image).read_bytes()

@@ -12,7 +12,17 @@ from spikeprime.devices import (
     Matrix5x5,
     Motor,
 )
-from spikeprime.enums import Color, HubFace, MotorType, Port, ProgramAction
+from spikeprime.enums import (
+    Color,
+    HubFace,
+    MotorDirection,
+    MotorEndState,
+    MotorType,
+    Port,
+    ProductGroup,
+    ProgramAction,
+    ResponseStatus,
+)
 from spikeprime.errors import HubError, HubNackError, HubNotFoundError, HubProtocolError, HubTimeoutError
 
 __version__ = "0.1.0"
@@ -35,9 +45,13 @@ __all__ = [
     "IMU",
     "Matrix5x5",
     "Motor",
+    "MotorDirection",
+    "MotorEndState",
     "MotorType",
     "Port",
+    "ProductGroup",
     "ProgramAction",
+    "ResponseStatus",
     "connect",
     "scan",
 ]
