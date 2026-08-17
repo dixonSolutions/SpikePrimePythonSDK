@@ -51,9 +51,6 @@ jobs:
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       !contains(github.event.head_commit.message || '', '[skip release]')
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,30 +60,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: docs-site/package-lock.json
-
       - name: Version
         id: version
         run: |
           VERSION="0.1.${{ github.run_number }}"
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
+            echo "::error::tag v${VERSION} already exists; a hand-made tag is colliding with the run number"
+            exit 1
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          python - <<'PY'
-          from pathlib import Path
-          import os
-          path = Path("pyproject.toml")
-          text = path.read_text(encoding="utf-8")
-          old = 'version = "0.1.0"'
-          new = f'version = "{os.environ["VERSION"]}"'
-          if old not in text:
-              raise SystemExit("could not find version = \"0.1.0\" in pyproject.toml")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
-          PY
-        env:
-          VERSION: 0.1.${{ github.run_number }}
+          python scripts/set_version.py --version "$VERSION"
 
       - name: Build
         run: |
@@ -104,53 +87,16 @@ jobs:
             --title "v${VERSION}" \
             --notes "Automated release from ${GITHUB_SHA:0:7} on main."
 
-      - name: Collect every release artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir -p all-dist
-          mapfile -t tags < <(gh release list --limit 200 --json tagName --jq '.[].tagName')
-          for tag in "${tags[@]}"; do
-            gh release download "$tag" --dir all-dist --pattern '*.whl' --pattern '*.tar.gz'
-          done
-
-      - name: Build the documentation site
-        run: |
-          npm ci
-          npm run build
-        working-directory: docs-site
-
-      - name: Assemble the Pages site
-        env:
-          PAGES_URL: https://dixonsolutions.github.io/${{ github.event.repository.name }}
-        run: |
-          set -euo pipefail
-
-          # The docs app owns the site root; the pip index keeps /simple/ so
-          # every published install command stays valid.
-          mkdir -p site
-          cp -R docs-site/dist/docs-site/browser/. site/
-
-          python scripts/write_simple_index.py \
-            --dist all-dist \
-            --site site \
-            --repo-url "${{ github.server_url }}/${{ github.repository }}" \
-            --pages-url "$PAGES_URL" \
-            --version "${{ steps.version.outputs.version }}" \
-            --no-home
-
-          # GitHub Pages serves 404.html for anything it cannot resolve, so give
-          # it the app's own prerendered not-found page.
-          cp site/not-found/index.html site/404.html
-
-          python scripts/write_sitemap.py \
-            --site site \
-            --base-url "$PAGES_URL" \
-            --lastmod "$(date -u +%Y-%m-%d)"
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-
-      - id: deploy
-        uses: actions/deploy-pages@v4
+  # Publishes the documentation app and the package index together. Runs on
+  # every push to main, including one that skipped the release, so the site
+  # never lags behind the branch.
+  pages:
+    needs: [test, docs, release]
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      needs.test.result == 'success' &&
+      needs.docs.result == 'success' &&
+      (needs.release.result == 'success' || needs.release.result == 'skipped')
+    uses: ./.github/workflows/pages.yml

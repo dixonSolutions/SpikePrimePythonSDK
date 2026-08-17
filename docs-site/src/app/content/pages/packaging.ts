@@ -21,7 +21,7 @@ export const packaging: DocPage = {
             { title: 'Run pytest', html: 'On Python 3.12. A failure stops everything else.' },
             {
               title: 'Set the version',
-              html: 'to <code>0.1.{run_number}</code>, rewritten into <code>pyproject.toml</code> for the build. The number is the workflow run, so it only ever increases.',
+              html: 'to <code>0.1.{run_number}</code>. <code>scripts/set_version.py</code> stamps it into both <code>pyproject.toml</code> and <code>spikeprime.__version__</code>, so a wheel always reports the version it was released as. The number is the workflow run, so it only ever increases.',
             },
             { title: 'Build', html: 'a wheel and an sdist with <code>python -m build</code>.' },
             {
@@ -195,6 +195,12 @@ npm run build                   # prerenders into dist/docs-site/browser`,
         {
           kind: 'prose',
           html: 'Versions are <code>0.1.N</code> where <code>N</code> is the CI run number. It is not semantic versioning: the project is alpha, and every release is simply the state of <code>main</code> at that moment.',
+        },
+        {
+          kind: 'callout',
+          tone: 'warn',
+          title: 'The committed version is a placeholder',
+          html: 'Whatever <code>pyproject.toml</code> holds in git is overwritten at build time, so editing it by hand achieves nothing — and hand-creating a <code>v0.1.N</code> tag will collide with a future run number and fail the release outright. Let CI own both.',
         },
         {
           kind: 'prose',
