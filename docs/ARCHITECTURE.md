@@ -1,5 +1,8 @@
 # Architecture
 
+> The expanded version of this page lives on the documentation site:
+> <https://dixonsolutions.github.io/SpikePrimePythonSDK/docs/architecture>.
+
 **SpikePrimePythonSDK** is a host-side SDK for HubOS 3. The Python import is
 `spikeprime`. Programs still run on the hub. This library talks to the hub over
 Bluetooth Low Energy using the protocol documented at

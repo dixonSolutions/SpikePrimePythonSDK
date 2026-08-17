@@ -28,8 +28,24 @@ jobs:
       - name: Test
         run: pytest -q
 
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+      - name: Install
+        run: npm ci
+        working-directory: docs-site
+      - name: Build
+        run: npm run build
+        working-directory: docs-site
+
   release:
-    needs: test
+    needs: [test, docs]
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
@@ -46,6 +62,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
 
       - name: Version
         id: version
@@ -92,14 +114,39 @@ jobs:
             gh release download "$tag" --dir all-dist --pattern '*.whl' --pattern '*.tar.gz'
           done
 
-      - name: Write GitHub Pages index
+      - name: Build the documentation site
         run: |
+          npm ci
+          npm run build
+        working-directory: docs-site
+
+      - name: Assemble the Pages site
+        env:
+          PAGES_URL: https://dixonsolutions.github.io/${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+
+          # The docs app owns the site root; the pip index keeps /simple/ so
+          # every published install command stays valid.
+          mkdir -p site
+          cp -R docs-site/dist/docs-site/browser/. site/
+
           python scripts/write_simple_index.py \
             --dist all-dist \
             --site site \
             --repo-url "${{ github.server_url }}/${{ github.repository }}" \
-            --pages-url "https://dixonsolutions.github.io/${{ github.event.repository.name }}" \
-            --version "${{ steps.version.outputs.version }}"
+            --pages-url "$PAGES_URL" \
+            --version "${{ steps.version.outputs.version }}" \
+            --no-home
+
+          # GitHub Pages serves 404.html for anything it cannot resolve, so give
+          # it the app's own prerendered not-found page.
+          cp site/not-found/index.html site/404.html
+
+          python scripts/write_sitemap.py \
+            --site site \
+            --base-url "$PAGES_URL" \
+            --lastmod "$(date -u +%Y-%m-%d)"
 
       - uses: actions/upload-pages-artifact@v3
         with:

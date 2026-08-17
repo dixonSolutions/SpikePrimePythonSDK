@@ -1,0 +1,134 @@
+:host {
+  display: block;
+}
+
+.api {
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-content-border-radius);
+  padding: 1.1rem 1.25rem 1.35rem;
+  margin: 1.25rem 0;
+  background: var(--p-content-background);
+  scroll-margin-top: 5.5rem;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  &__anchor {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    text-decoration: none;
+    color: inherit;
+
+    i {
+      opacity: 0;
+      font-size: 0.75rem;
+      color: var(--p-primary-color);
+      transition: opacity 0.15s ease;
+    }
+
+    &:hover i,
+    &:focus-visible i {
+      opacity: 1;
+    }
+  }
+
+  &__name {
+    margin: 0;
+    font-family: var(--sp-font-mono);
+    font-size: 1.02rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  &__sig {
+    margin: 0.85rem 0 0.9rem;
+    padding: 0.7rem 0.9rem;
+    border-radius: var(--p-content-border-radius);
+    background: var(--sp-code-bg);
+    border: 1px solid var(--p-content-border-color);
+    overflow-x: auto;
+    font-family: var(--sp-font-mono);
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+
+  &__summary {
+    line-height: 1.72;
+
+    :first-child {
+      margin-top: 0;
+    }
+  }
+
+  &__label {
+    margin: 1.15rem 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+  }
+
+  &__scroll {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+      padding: 0.5rem 0.75rem 0.5rem 0;
+      border-bottom: 1px solid var(--p-content-border-color);
+    }
+
+    th {
+      font-size: 0.72rem;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--p-text-muted-color);
+    }
+
+    td:first-child {
+      white-space: nowrap;
+    }
+  }
+
+  &__type {
+    color: var(--p-primary-color);
+  }
+
+  &__returns {
+    margin: 0;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+
+  &__raises {
+    margin: 0;
+    padding-left: 1.1rem;
+
+    li + li {
+      margin-top: 0.35rem;
+    }
+  }
+
+  &__notes {
+    margin: 1rem 0 0;
+    padding-left: 0.85rem;
+    border-left: 3px solid var(--p-primary-color);
+    color: var(--p-text-muted-color);
+  }
+}

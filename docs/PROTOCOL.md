@@ -1,5 +1,8 @@
 # Protocol notes
 
+> The expanded version of this page lives on the documentation site:
+> <https://dixonsolutions.github.io/SpikePrimePythonSDK/docs/protocol-reference>.
+
 This SDK implements HubOS 3 over BLE. Source of truth:
 
 - [Connection](https://lego.github.io/spike-prime-docs/connect.html)

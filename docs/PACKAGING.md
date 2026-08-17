@@ -1,5 +1,8 @@
 # Packaging and releases
 
+> The expanded version of this page lives on the documentation site:
+> <https://dixonsolutions.github.io/SpikePrimePythonSDK/docs/packaging-and-releases>.
+
 Every push to `main` that passes tests publishes a new version of **SpikePrimePythonSDK**.
 
 ## What CI does

@@ -1,0 +1,83 @@
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <button
+      type="button"
+      class="topbar__menu"
+      aria-label="Open the navigation menu"
+      (click)="menuOpen.set(true)"
+    >
+      <i class="pi pi-bars" aria-hidden="true"></i>
+    </button>
+
+    <a class="brand" routerLink="/">
+      <span class="brand__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3.5" y="6.5" width="17" height="11" rx="2.5" />
+          <circle cx="9" cy="12" r="1.6" fill="currentColor" stroke="none" />
+          <circle cx="15" cy="12" r="1.6" fill="currentColor" stroke="none" />
+          <path d="M8 6.5V4.5M16 6.5V4.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      <span class="brand__text">
+        <strong>{{ site.name }}</strong>
+        <small>HubOS 3 · Python</small>
+      </span>
+    </a>
+
+    <button type="button" class="searchbtn" (click)="searchOpen.set(true)">
+      <i class="pi pi-search" aria-hidden="true"></i>
+      <span class="searchbtn__label">Search docs</span>
+      <kbd>{{ shortcut }}</kbd>
+    </button>
+
+    <nav class="topbar__links" aria-label="Site">
+      <a routerLink="/docs">Docs</a>
+      <a [href]="site.repo" target="_blank" rel="noopener" aria-label="Source on GitHub">
+        <i class="pi pi-github" aria-hidden="true"></i>
+      </a>
+      <p-button
+        [text]="true"
+        severity="secondary"
+        [rounded]="true"
+        [icon]="theme.dark() ? 'pi pi-sun' : 'pi pi-moon'"
+        [ariaLabel]="theme.dark() ? 'Switch to the light theme' : 'Switch to the dark theme'"
+        (onClick)="theme.toggle()"
+      />
+    </nav>
+  </div>
+</header>
+
+<main id="main" class="main">
+  <router-outlet />
+</main>
+
+<footer class="footer">
+  <div class="footer__inner">
+    <p>
+      <strong>{{ site.name }}</strong> is an unofficial, community project. It is not affiliated
+      with, authorized by, or endorsed by the LEGO Group. LEGO, SPIKE and MINDSTORMS are
+      trademarks of the LEGO Group.
+    </p>
+    <p class="footer__links">
+      <a [href]="site.repo" target="_blank" rel="noopener">GitHub</a>
+      <a [href]="site.issues" target="_blank" rel="noopener">Issues</a>
+      <a [href]="site.simpleIndex" target="_blank" rel="noopener">Package index</a>
+      <a [href]="site.protocolDocs" target="_blank" rel="noopener">LEGO protocol docs</a>
+      <span>Apache-2.0</span>
+    </p>
+  </div>
+</footer>
+
+<p-drawer
+  [visible]="menuOpen()"
+  (visibleChange)="menuOpen.set($event)"
+  position="left"
+  header="Documentation"
+  styleClass="sp-nav-drawer"
+>
+  <sp-sidebar (navigate)="menuOpen.set(false)" />
+</p-drawer>
+
+<sp-search-dialog [(open)]="searchOpen" />

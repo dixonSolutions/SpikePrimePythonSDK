@@ -1,0 +1,46 @@
+:host {
+  display: block;
+  margin: 1.25rem 0;
+}
+
+.code {
+  margin: 0;
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--p-content-border-radius);
+  background: var(--sp-code-bg);
+  overflow: hidden;
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0.35rem 0.25rem 0.9rem;
+    border-bottom: 1px solid var(--p-content-border-color);
+    background: var(--sp-code-bar-bg);
+  }
+
+  &__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--p-text-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__pre {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    tab-size: 4;
+  }
+}
+
+code {
+  font-family: var(--sp-font-mono);
+}
