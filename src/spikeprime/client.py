@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
+import sys
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,6 +65,9 @@ TX_UUID = "0000fd02-0002-1000-8000-00805f9b34fb"
 DEFAULT_SCAN_TIMEOUT = 10.0
 DEFAULT_REQUEST_TIMEOUT = 10.0
 SLOTS = range(20)
+
+# Where BlueZ keeps a device that is connected but no longer advertising.
+BLUEZ_DEVICE_INTERFACE = "org.bluez.Device1"
 
 ConsoleCallback = Callable[[str], Awaitable[None] | None]
 DeviceCallback = Callable[[DeviceSnapshot], Awaitable[None] | None]
@@ -180,25 +184,32 @@ class Hub:
     ) -> BLEDevice:
         if address:
             device = await BleakScanner.find_device_by_address(address, timeout=timeout)
-            if device is None:
-                raise HubNotFoundError(f"no hub at {address}")
+        else:
+
+            def _filter(device: BLEDevice, adv: AdvertisementData) -> bool:
+                if not _matches_service(device, adv):
+                    return False
+                if name is None:
+                    return True
+                advertised = (device.name or adv.local_name or "").lower()
+                return advertised == name.lower() or name.lower() in advertised
+
+            device = await BleakScanner.find_device_by_filter(_filter, timeout=timeout)
+        if device is not None:
             return device
 
-        def _filter(device: BLEDevice, adv: AdvertisementData) -> bool:
-            if not _matches_service(device, adv):
-                return False
-            if name is None:
-                return True
-            advertised = (device.name or adv.local_name or "").lower()
-            return advertised == name.lower() or name.lower() in advertised
+        # Nothing is advertising under that description. A hub whose link is
+        # still open does not advertise at all, so before giving up, look for
+        # one the OS is already connected to and attach to that instead.
+        device = await find_open_link(address=address, name=name)
+        if device is not None:
+            logger.info("attaching to the link already open on %s", device.address)
+            return device
 
-        device = await BleakScanner.find_device_by_filter(_filter, timeout=timeout)
-        if device is None:
-            hint = f" named {name!r}" if name else ""
-            raise HubNotFoundError(
-                f"no hub{hint} found. Turn the hub on and make sure it is advertising."
-            )
-        return device
+        hint = f" at {address}" if address else f" named {name!r}" if name else ""
+        raise HubNotFoundError(
+            f"no hub{hint} found. Turn the hub on and make sure it is advertising."
+        )
 
     async def open(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -600,6 +611,69 @@ class Hub:
 
     async def tunnel(self, payload: bytes, *, high_priority: bool = False) -> None:
         await self._send(TunnelMessage(payload), high_priority=high_priority)
+
+
+def match_open_link(
+    devices: Iterable[tuple[str, dict]],
+    address: str | None = None,
+    name: str | None = None,
+) -> BLEDevice | None:
+    """Pick a hub out of the devices the OS reports, or None.
+
+    Only devices that are connected right now are considered. The OS remembers
+    devices long after they have gone, and attaching to one of those would hang
+    rather than fail. A name is matched the same way as during a scan, and must
+    also carry the HubOS service, so a headphone whose name happens to contain
+    the same word is never mistaken for a hub.
+    """
+    for path, props in devices:
+        if not props.get("Connected"):
+            continue
+        advertised = props.get("Address", "")
+        if address is not None:
+            if advertised.casefold() != address.casefold():
+                continue
+        else:
+            uuids = [uuid.lower() for uuid in props.get("UUIDs") or ()]
+            if SERVICE_UUID.lower() not in uuids:
+                continue
+            if name is not None:
+                known = (props.get("Alias") or props.get("Name") or "").lower()
+                if known != name.lower() and name.lower() not in known:
+                    continue
+        return BLEDevice(
+            advertised,
+            props.get("Alias") or props.get("Name"),
+            {"path": path, "props": props},
+        )
+    return None
+
+
+async def find_open_link(
+    address: str | None = None,
+    name: str | None = None,
+) -> BLEDevice | None:
+    """Find a hub the OS is already connected to, without waiting for an advert.
+
+    Only implemented for BlueZ, where the device object survives for as long as
+    the link does. Returns None elsewhere, and on any bleak layout this does not
+    recognise, so callers simply fall back to reporting the hub as missing.
+    """
+    if not sys.platform.startswith("linux"):
+        return None
+    try:
+        from bleak.backends.bluezdbus.manager import get_global_bluez_manager
+
+        manager = await get_global_bluez_manager()
+        known = [
+            (path, interfaces[BLUEZ_DEVICE_INTERFACE])
+            for path, interfaces in manager._properties.items()
+            if BLUEZ_DEVICE_INTERFACE in interfaces
+        ]
+    except Exception:  # pragma: no cover - depends on bleak internals
+        logger.debug("cannot inspect open BlueZ links", exc_info=True)
+        return None
+    return match_open_link(known, address=address, name=name)
 
 
 def _check_slot(slot: int) -> None:

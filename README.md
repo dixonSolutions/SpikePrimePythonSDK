@@ -94,6 +94,18 @@ If the link does drop, `await hub.reconnect()` finds the hub again by address an
 rebuilds the connection. Callbacks and queues registered on the `Hub` survive, so
 the session continues instead of being rebuilt.
 
+### Hubs that are already connected
+
+A connected peripheral stops advertising, so a hub whose link was left open — by a
+process that was killed before it could disconnect, say — is invisible to a scan
+and looks switched off. `connect()` handles this: when nothing answers the scan it
+checks what the OS already has connected and attaches to that link instead of
+failing. Recovery is automatic, with no need to tear the link down by hand.
+
+Only devices that are connected *right now* are considered, because the OS
+remembers devices long after they are gone and attaching to one of those would
+hang rather than fail. Implemented for BlueZ; elsewhere the scan result stands.
+
 Robot programs still use the **on-hub** modules (`hub`, `motor`, `color_sensor`, …).
 This library is the host side: editor/CLI/agent talking to the brick.
 
