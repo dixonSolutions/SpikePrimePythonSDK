@@ -1,0 +1,132 @@
+// Optimus UI injects its theme into the `optimus` layer (see app.config.ts), so
+// declaring the order here lets plain element styles below win without !important.
+@layer optimus, app;
+
+:root {
+  --sp-font-sans:
+    'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sp-font-mono:
+    ui-monospace, 'SFMono-Regular', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+  --sp-code-bg: #fbfbfd;
+  --sp-code-bar-bg: #f4f5f8;
+  color-scheme: light;
+}
+
+:root.sp-dark {
+  --sp-code-bg: #16181d;
+  --sp-code-bar-bg: #1c1f26;
+  color-scheme: dark;
+}
+
+@layer app {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--sp-font-sans);
+    font-size: 16px;
+    background: var(--p-content-background);
+    color: var(--p-text-color);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    color: var(--p-primary-color);
+  }
+
+  code {
+    font-family: var(--sp-font-mono);
+    font-size: 0.88em;
+  }
+
+  // Inline `<code>` inside prose, but not inside a highlighted block.
+  :not(pre) > code {
+    padding: 0.12em 0.36em;
+    border-radius: 4px;
+    background: var(--sp-code-bar-bg);
+    border: 1px solid var(--p-content-border-color);
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--p-primary-color) 28%, transparent);
+  }
+
+  // Syntax highlighting. Token classes come from shared/highlight.ts.
+  .tok-comment {
+    color: #7b8494;
+    font-style: italic;
+  }
+  .tok-string {
+    color: #067d68;
+  }
+  .tok-kw {
+    color: #a626a4;
+  }
+  .tok-builtin {
+    color: #0b6bcb;
+  }
+  .tok-num {
+    color: #b3591a;
+  }
+  .tok-def,
+  .tok-key,
+  .tok-section {
+    color: #0b6bcb;
+    font-weight: 600;
+  }
+  .tok-decorator,
+  .tok-flag,
+  .tok-var {
+    color: #b3591a;
+  }
+
+  :root.sp-dark {
+    .tok-comment {
+      color: #737d8c;
+    }
+    .tok-string {
+      color: #62c9a8;
+    }
+    .tok-kw {
+      color: #d58ae0;
+    }
+    .tok-builtin {
+      color: #74b6ff;
+    }
+    .tok-num {
+      color: #e4a15e;
+    }
+    .tok-def,
+    .tok-key,
+    .tok-section {
+      color: #74b6ff;
+    }
+    .tok-decorator,
+    .tok-flag,
+    .tok-var {
+      color: #e4a15e;
+    }
+  }
+
+  // Optimus overlays that render outside the app's own component trees.
+  .sp-search-dialog .p-dialog-content {
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .sp-nav-drawer {
+    width: min(20rem, 84vw);
+  }
+}

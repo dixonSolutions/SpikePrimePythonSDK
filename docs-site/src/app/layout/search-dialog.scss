@@ -1,0 +1,113 @@
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &__field {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+
+    > i {
+      color: var(--p-text-muted-color);
+    }
+  }
+
+  &__input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    font-size: 1.02rem;
+    padding-inline: 0;
+
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+
+  &__kbd,
+  kbd {
+    font-family: var(--sp-font-mono);
+    font-size: 0.68rem;
+    padding: 0.15rem 0.35rem;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 4px;
+    color: var(--p-text-muted-color);
+  }
+
+  &__results {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: min(60vh, 26rem);
+    overflow-y: auto;
+    border-top: 1px solid var(--p-content-border-color);
+  }
+
+  &__hit {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.15rem 0.75rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.6rem 0.7rem;
+    border: none;
+    border-radius: var(--p-content-border-radius);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+
+    &--active {
+      background: var(--p-highlight-background, var(--sp-code-bar-bg));
+    }
+  }
+
+  &__hit-title {
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+
+    i {
+      font-size: 0.65rem;
+      color: var(--p-text-muted-color);
+    }
+  }
+
+  &__hit-group {
+    grid-row: 1;
+    grid-column: 2;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--p-text-muted-color);
+    white-space: nowrap;
+  }
+
+  &__hit-context {
+    grid-column: 1 / -1;
+    font-size: 0.82rem;
+    color: var(--p-text-muted-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__empty,
+  &__hint {
+    margin: 0;
+    padding: 0.9rem 0.2rem 0.4rem;
+    border-top: 1px solid var(--p-content-border-color);
+    font-size: 0.86rem;
+    color: var(--p-text-muted-color);
+    line-height: 1.7;
+  }
+}

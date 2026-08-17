@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dixonsolutions.github.io/SpikePrimePythonSDK/sitemap.xml

@@ -7,6 +7,9 @@ It implements the protocol published by the LEGO Group at
 [lego.github.io/spike-prime-docs](https://lego.github.io/spike-prime-docs/).
 This project is not affiliated with, authorized by, or endorsed by the LEGO Group.
 
+📚 **[Full documentation](https://dixonsolutions.github.io/SpikePrimePythonSDK/)** —
+installation, project setup, guides, the complete API reference and the protocol.
+
 ## Install
 
 From the GitHub Pages package index:
@@ -125,15 +128,34 @@ spikeprime firmware hub-firmware.bin --yes   # overwrites HubOS; see docs/PROTOC
 
 ## Layout
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/PROTOCOL.md](docs/PROTOCOL.md).
-
 ```
 src/spikeprime/
   client.py              Hub, scan, connect
   devices.py             typed sensor/motor snapshots
   protocol/cobs.py       COBS + XOR framing
   protocol/messages.py   every HubOS message
+docs-site/               the documentation site (Angular 21 + Optimus UI)
+docs/                    short reference notes kept alongside the code
 ```
+
+The full guide lives at
+[dixonsolutions.github.io/SpikePrimePythonSDK](https://dixonsolutions.github.io/SpikePrimePythonSDK/);
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/PROTOCOL.md](docs/PROTOCOL.md)
+are the condensed versions.
+
+## Documentation site
+
+```bash
+cd docs-site
+npm ci
+npm start        # http://localhost:4200
+npm run build    # prerenders every page into dist/docs-site/browser
+```
+
+Pages are data rather than templates — one file per page under
+`docs-site/src/app/content/pages/`, from which the navigation, search index,
+pager, prerendered routes and sitemap are all derived. See
+[docs-site/README.md](docs-site/README.md).
 
 ## Tests
 

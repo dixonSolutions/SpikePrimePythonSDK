@@ -1,0 +1,124 @@
+name: Pages
+
+# Publishes the whole GitHub Pages site: the documentation app at the root and
+# the PEP 503 package index at /simple/.
+#
+# Called by Release on every push to main, so the site is rebuilt for every
+# commit even when that commit does not cut a new version. Also runnable on its
+# own from the Actions tab to re-deploy without touching the package.
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and never cancel one midway: a cancelled deploy can
+# leave Pages serving a half-uploaded artifact.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Build the documentation site
+        run: |
+          npm ci
+          npm run build
+        working-directory: docs-site
+
+      - name: Collect every release artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p all-dist
+          mapfile -t tags < <(gh release list --limit 200 --json tagName --jq '.[].tagName')
+          for tag in "${tags[@]}"; do
+            # A release with no matching assets exits non-zero; that is not a
+            # reason to abandon the other 200.
+            gh release download "$tag" --dir all-dist \
+              --pattern '*.whl' --pattern '*.tar.gz' --clobber || true
+          done
+          # An index with no files would silently break every documented
+          # `pip install`, so refuse to publish one.
+          if ! ls all-dist/* >/dev/null 2>&1; then
+            echo "::error::no release artifacts found; refusing to publish an empty package index"
+            exit 1
+          fi
+          echo "latest=$(gh release view --json tagName --jq '.tagName' | sed 's/^v//')" >> "$GITHUB_ENV"
+
+      - name: Assemble the site
+        env:
+          PAGES_URL: https://dixonsolutions.github.io/${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+
+          # The docs app owns the site root; the package index keeps /simple/ so
+          # every published install command stays valid.
+          mkdir -p site
+          cp -R docs-site/dist/docs-site/browser/. site/
+
+          python scripts/write_simple_index.py \
+            --dist all-dist \
+            --site site \
+            --repo-url "${{ github.server_url }}/${{ github.repository }}" \
+            --pages-url "$PAGES_URL" \
+            --version "${latest:-0.1.0}" \
+            --no-home
+
+          # Pages serves 404.html for anything it cannot resolve, so give it the
+          # app's own prerendered not-found page.
+          cp site/not-found/index.html site/404.html
+
+          python scripts/write_sitemap.py \
+            --site site \
+            --base-url "$PAGES_URL" \
+            --lastmod "$(date -u +%Y-%m-%d)"
+
+      - name: Check the assembled site
+        run: |
+          set -euo pipefail
+          for required in \
+            site/index.html \
+            site/404.html \
+            site/sitemap.xml \
+            site/.nojekyll \
+            site/robots.txt \
+            site/docs/installation/index.html \
+            site/simple/index.html \
+            site/simple/spikeprimepythonsdk/index.html
+          do
+            [ -f "$required" ] || { echo "::error::missing $required"; exit 1; }
+          done
+          grep -q '<sp-root' site/index.html \
+            || { echo "::error::the site root is not the documentation app"; exit 1; }
+          grep -q 'sha256=' site/simple/spikeprimepythonsdk/index.html \
+            || { echo "::error::the package index has no hashed links"; exit 1; }
+          echo "pages: $(find site -name index.html -not -path 'site/simple/*' | wc -l)"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4

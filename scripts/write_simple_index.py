@@ -141,7 +141,6 @@ def write_home(
 """,
         encoding="utf-8",
     )
-    dest.joinpath(".nojekyll").write_text("", encoding="utf-8")
 
 
 def main() -> None:
@@ -152,6 +151,12 @@ def main() -> None:
     parser.add_argument("--pages-url", required=True)
     parser.add_argument("--version", required=True)
     parser.add_argument("--install-name", default=PROJECT)
+    parser.add_argument(
+        "--no-home",
+        dest="home",
+        action="store_false",
+        help="Do not write index.html at the site root. Use when the documentation app owns it.",
+    )
     args = parser.parse_args()
 
     args.site.mkdir(parents=True, exist_ok=True)
@@ -159,13 +164,17 @@ def main() -> None:
     if not files:
         raise SystemExit(f"no dist files in {args.dist}")
     write_simple_index(files, args.site)
-    write_home(
-        args.site,
-        repo_url=args.repo_url,
-        pages_url=args.pages_url,
-        version=args.version,
-        install_name=args.install_name,
-    )
+    if args.home:
+        write_home(
+            args.site,
+            repo_url=args.repo_url,
+            pages_url=args.pages_url,
+            version=args.version,
+            install_name=args.install_name,
+        )
+    # Always, so GitHub Pages serves the tree verbatim rather than running Jekyll
+    # over it — the underscore-prefixed chunk names Angular emits depend on it.
+    args.site.joinpath(".nojekyll").write_text("", encoding="utf-8")
 
 
 if __name__ == "__main__":
