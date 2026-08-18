@@ -72,7 +72,23 @@ export const DOC_GROUPS: DocGroup[] = [
   },
 ];
 
+/**
+ * The overview is the site's landing page: it is served at `/` rather than at
+ * `/docs/overview`, so the first thing a reader sees is documentation with the
+ * sidebar beside it. It still lives in `DOC_GROUPS` so the sidebar, the search
+ * index and the pager all treat it as an ordinary page; only its URL differs,
+ * which is what `docPath` exists to hide from every call site.
+ */
+export const HOME_PAGE: DocPage = overview;
+
+export function docPath(slug: string): string[] {
+  return slug === HOME_PAGE.slug ? ['/'] : ['/docs', slug];
+}
+
 export const ALL_PAGES: DocPage[] = DOC_GROUPS.flatMap((group) => group.pages);
+
+/** Slugs that `docs/:slug` actually renders — the home page is served at `/`. */
+export const ROUTED_PAGES: DocPage[] = ALL_PAGES.filter((page) => page.slug !== HOME_PAGE.slug);
 
 const BY_SLUG = new Map(ALL_PAGES.map((page) => [page.slug, page]));
 const GROUP_BY_SLUG = new Map(

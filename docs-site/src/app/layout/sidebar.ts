@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
-import { DOC_GROUPS } from '../content';
+import { DOC_GROUPS, docPath } from '../content';
 
 @Component({
   selector: 'sp-sidebar',
@@ -20,7 +20,7 @@ import { DOC_GROUPS } from '../content';
               <li>
                 <a
                   class="nav__link"
-                  [routerLink]="['/docs', page.slug]"
+                  [routerLink]="path(page.slug)"
                   routerLinkActive="nav__link--active"
                   [routerLinkActiveOptions]="{ exact: true }"
                   (click)="navigate.emit()"
@@ -41,4 +41,8 @@ export class Sidebar {
   readonly navigate = output<void>();
 
   protected readonly groups = DOC_GROUPS;
+
+  protected path(slug: string): string[] {
+    return docPath(slug);
+  }
 }

@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CardModule } from '@openng/optimus-ui/card';
 import { MessageModule } from '@openng/optimus-ui/message';
 
+import { docPath } from '../content';
 import type { Block, CalloutTone } from '../content/types';
 import { ApiEntryCard } from './api-entry';
 import { CodeBlock } from './code-block';
@@ -114,7 +115,7 @@ const TONE_ICON: Record<CalloutTone, string> = {
                   <h3 class="cards__title">{{ card.title }}</h3>
                   <p class="cards__text" [innerHTML]="card.html"></p>
                   @if (card.slug) {
-                    <a class="cards__link" [routerLink]="['/docs', card.slug]">
+                    <a class="cards__link" [routerLink]="path(card.slug)">
                       Read more <i class="pi pi-arrow-right" aria-hidden="true"></i>
                     </a>
                   } @else if (card.href) {
@@ -176,6 +177,10 @@ export class Blocks {
     event.preventDefault();
     const [path, fragment] = href.split('#');
     void this.router.navigateByUrl(`/${path}${fragment ? `#${fragment}` : ''}`);
+  }
+
+  protected path(slug: string): string[] {
+    return docPath(slug);
   }
 
   protected tone(value: CalloutTone) {

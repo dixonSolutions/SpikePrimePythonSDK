@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { DOC_GROUPS } from '../content';
+import { DOC_GROUPS, docPath } from '../content';
 import { SeoService } from '../core/seo';
 import { Sidebar } from '../layout/sidebar';
 
@@ -31,7 +31,7 @@ import { Sidebar } from '../layout/sidebar';
             <ul class="group__list">
               @for (page of group.pages; track page.slug) {
                 <li>
-                  <a class="entry" [routerLink]="['/docs', page.slug]">
+                  <a class="entry" [routerLink]="path(page.slug)">
                     <span class="entry__title">{{ page.title }}</span>
                     <span class="entry__summary">{{ page.summary }}</span>
                   </a>
@@ -47,6 +47,10 @@ import { Sidebar } from '../layout/sidebar';
 })
 export class DocsIndex {
   protected readonly groups = DOC_GROUPS;
+
+  protected path(slug: string): string[] {
+    return docPath(slug);
+  }
 
   constructor() {
     inject(SeoService).set(

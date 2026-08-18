@@ -1,6 +1,6 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
-import { ALL_PAGES } from './content';
+import { ROUTED_PAGES } from './content';
 
 export const serverRoutes: ServerRoute[] = [
   {
@@ -8,7 +8,7 @@ export const serverRoutes: ServerRoute[] = [
     // Pages can serve a deep link without a client-side fallback.
     path: 'docs/:slug',
     renderMode: RenderMode.Prerender,
-    getPrerenderParams: async () => ALL_PAGES.map((page) => ({ slug: page.slug })),
+    getPrerenderParams: async () => ROUTED_PAGES.map((page) => ({ slug: page.slug })),
   },
   {
     path: '**',
