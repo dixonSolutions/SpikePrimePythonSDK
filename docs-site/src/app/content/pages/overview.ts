@@ -4,38 +4,88 @@ export const overview: DocPage = {
   slug: 'overview',
   title: 'Overview',
   summary:
-    'What SpikePrimePythonSDK is, what it talks to, and how the pieces fit together before you install anything.',
-  keywords: ['introduction', 'about', 'what is', 'spike prime', 'hubos 3', 'unofficial'],
+    'Install it, connect to a hub, run a program — plus the one distinction that trips everyone up and a map of the rest of the docs.',
+  keywords: [
+    'introduction',
+    'about',
+    'what is',
+    'getting started',
+    'install',
+    'spike prime',
+    'hubos 3',
+    'unofficial',
+  ],
   sections: [
     {
-      id: 'what-it-is',
-      title: 'What it is',
+      id: 'install',
+      title: 'Install',
       blocks: [
         {
           kind: 'prose',
-          html: '<strong>SpikePrimePythonSDK</strong> is an unofficial, host-side Python SDK for the LEGO® Education SPIKE™ Prime hub running <strong>HubOS 3</strong>. It speaks the Bluetooth Low Energy protocol that the LEGO Group publishes at <a href="https://lego.github.io/spike-prime-docs/" target="_blank" rel="noopener">lego.github.io/spike-prime-docs</a>, so a program on your computer can find a hub, push MicroPython into a slot, start it, read everything it prints, and watch its motors and sensors as it runs.',
+          html: 'Releases go to this project&rsquo;s own <a href="https://dixonsolutions.github.io/SpikePrimePythonSDK/simple/" target="_blank" rel="noopener">PEP&nbsp;503 index</a>, not to PyPI. Keep the <code>--extra-index-url</code> so <code>bleak</code> and the rest still resolve from PyPI.',
+        },
+        {
+          kind: 'code',
+          lang: 'bash',
+          caption: 'Python 3.10 or newer',
+          code: `pip install SpikePrimePythonSDK \\
+  --index-url https://dixonsolutions.github.io/SpikePrimePythonSDK/simple/ \\
+  --extra-index-url https://pypi.org/simple`,
         },
         {
           kind: 'prose',
-          html: 'The distribution is named <code>SpikePrimePythonSDK</code>, but the import and the command-line tool are both <code>spikeprime</code>:',
+          html: 'The distribution is named <code>SpikePrimePythonSDK</code>; the import and the console script are both <code>spikeprime</code>. Working from a checkout, pinning a tag, or fixing Bluetooth permissions on Linux, macOS or Windows? See <a href="docs/installation">Installation</a> and <a href="docs/project-setup">Project setup</a>.',
+        },
+      ],
+    },
+    {
+      id: 'first-program',
+      title: 'Run something on a hub',
+      blocks: [
+        {
+          kind: 'prose',
+          html: 'Turn the hub on, make sure it is not already paired to the SPIKE app, and run this. <code>connect()</code> scans for the HubOS GATT service and returns the first hub it finds.',
         },
         {
           kind: 'code',
           lang: 'python',
+          caption: 'hello.py',
           code: `import asyncio
 from spikeprime import connect
 
+PROGRAM = """\\
+import runloop
+from hub import light_matrix
+
+async def main():
+    await light_matrix.write("Hi")
+
+runloop.run(main())
+"""
+
 async def main():
     async with await connect() as hub:
-        print(await hub.get_name())
+        print(await hub.get_name(), hub.info.firmware_version)
+        hub.on_console(lambda line: print("[hub]", line.rstrip()))
+        await hub.run(PROGRAM, slot=0)
+        await hub.wait_until_stopped()
 
 asyncio.run(main())`,
         },
         {
-          kind: 'callout',
-          tone: 'info',
-          title: 'Not a LEGO product',
-          html: 'This project is not affiliated with, authorized by, or endorsed by the LEGO Group. It reimplements a publicly documented protocol. LEGO, SPIKE and MINDSTORMS are trademarks of the LEGO Group.',
+          kind: 'prose',
+          html: 'Or do the same thing without writing any host code at all &mdash; the CLI ships with the package:',
+        },
+        {
+          kind: 'terminal',
+          command: 'spikeprime upload hello_hub.py --slot 0 --run',
+          output: `Uploaded hello_hub.py to slot 0.
+Started. Console (Ctrl+C to stop):
+Hi`,
+        },
+        {
+          kind: 'prose',
+          html: 'The full walkthrough, including what to do when the scan finds nothing, is in <a href="docs/quickstart">Quick start</a>. Every command is listed under <a href="docs/cli-reference">CLI reference</a>.',
         },
       ],
     },
@@ -44,19 +94,29 @@ asyncio.run(main())`,
       title: 'Host side, not hub side',
       blocks: [
         {
-          kind: 'prose',
-          html: 'The single most important thing to understand before writing any code: <strong>this library runs on your computer, not on the hub.</strong> Robot programs still use the on-hub MicroPython modules — <code>hub</code>, <code>motor</code>, <code>color_sensor</code>, <code>runloop</code> — and those modules only exist on the brick. <code>spikeprime</code> is the other half of the conversation: the process that sends that code over and listens to what comes back.',
+          kind: 'callout',
+          tone: 'warn',
+          title: 'The most common first mistake',
+          html: 'This library runs on your computer, never on the hub. Do not upload a script that imports <code>spikeprime</code> &mdash; the hub has no BLE stack and no <code>bleak</code>, so it would fail immediately. The CLI refuses to do it.',
         },
         {
           kind: 'prose',
-          html: 'Uploading a script that itself imports <code>spikeprime</code> will produce a hub program that immediately fails, because the hub has no BLE stack, no <code>bleak</code>, and no <code>spikeprime</code>. The CLI actively refuses to do it. There is a whole page on the distinction: <a href="docs/hub-code-vs-host-code">Hub code vs host code</a>.',
+          html: 'Robot programs keep using the on-hub MicroPython modules &mdash; <code>hub</code>, <code>motor</code>, <code>color_sensor</code>, <code>runloop</code> &mdash; which only exist on the brick. <code>spikeprime</code> is the other half of the conversation: the process that sends that code over and listens to what comes back. In the snippet above, <code>PROGRAM</code> is hub code and everything around it is host code.',
+        },
+        {
+          kind: 'prose',
+          html: 'It has a page of its own, worth reading once: <a href="docs/hub-code-vs-host-code">Hub code vs host code</a>.',
         },
       ],
     },
     {
       id: 'capabilities',
-      title: 'What it can do',
+      title: 'What you can call',
       blocks: [
+        {
+          kind: 'prose',
+          html: 'Everything on <code>Hub</code> maps onto documented HubOS messages. Nothing here is guesswork or a private API.',
+        },
         {
           kind: 'table',
           headers: ['Method', 'Protocol messages behind it'],
@@ -75,6 +135,10 @@ asyncio.run(main())`,
             ['<code>hub.wait_until_stopped()</code>', 'waits on <code>ProgramFlowNotification</code>'],
             ['<code>hub.reconnect()</code>', 'rebuilds a dropped link, keeping the same <code>Hub</code>'],
           ],
+        },
+        {
+          kind: 'prose',
+          html: 'Signatures, arguments and exceptions for all of them are in <a href="docs/api-client">spikeprime.client</a>.',
         },
       ],
     },
@@ -105,7 +169,7 @@ asyncio.run(main())`,
         },
         {
           kind: 'prose',
-          html: 'Connecting costs a Bluetooth scan, so keeping one <code>Hub</code> across several runs is both faster and kinder to the link than reconnecting per program. See <a href="docs/connecting">Connecting to a hub</a>.',
+          html: 'Connecting costs a Bluetooth scan, so keeping one <code>Hub</code> across several runs is both faster and kinder to the link than reconnecting per program. See <a href="docs/connecting">Connecting to a hub</a>, <a href="docs/console-output">Console output</a> and <a href="docs/sensors-and-devices">Sensors and devices</a>.',
         },
       ],
     },
@@ -153,6 +217,12 @@ asyncio.run(main())`,
           title: 'Alpha software',
           html: 'The project is classified <em>Development Status :: 3 - Alpha</em>. The high-level <code>Hub</code> surface is stable in practice, but the protocol layer tracks a specification that the LEGO Group can revise.',
         },
+        {
+          kind: 'callout',
+          tone: 'info',
+          title: 'Not a LEGO product',
+          html: 'This project is not affiliated with, authorized by, or endorsed by the LEGO Group. It reimplements the protocol published at <a href="https://lego.github.io/spike-prime-docs/" target="_blank" rel="noopener">lego.github.io/spike-prime-docs</a>. LEGO, SPIKE and MINDSTORMS are trademarks of the LEGO Group.',
+        },
       ],
     },
     {
@@ -163,10 +233,10 @@ asyncio.run(main())`,
           kind: 'cards',
           cards: [
             {
-              title: 'Installation',
-              icon: 'pi pi-download',
-              html: 'Install from the project index, from git, or from a checkout for development.',
-              slug: 'installation',
+              title: 'Quick start',
+              icon: 'pi pi-bolt',
+              html: 'Connect, upload a program and read its output in about twenty lines.',
+              slug: 'quickstart',
             },
             {
               title: 'Project setup',
@@ -175,16 +245,16 @@ asyncio.run(main())`,
               slug: 'project-setup',
             },
             {
-              title: 'Quick start',
-              icon: 'pi pi-bolt',
-              html: 'Connect, upload a program and read its output in about twenty lines.',
-              slug: 'quickstart',
-            },
-            {
               title: 'API reference',
               icon: 'pi pi-code',
               html: 'Every public class, function, dataclass and enum, with signatures.',
               slug: 'api-spikeprime',
+            },
+            {
+              title: 'Troubleshooting',
+              icon: 'pi pi-wrench',
+              html: 'Scans that find nothing, links that drop mid-upload, and what the errors mean.',
+              slug: 'troubleshooting',
             },
           ],
         },

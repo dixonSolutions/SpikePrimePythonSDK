@@ -12,7 +12,3 @@ export const SITE = {
   license: 'Apache-2.0',
   pythonRequires: '3.10',
 } as const;
-
-export const INSTALL_COMMAND = `pip install SpikePrimePythonSDK \\
-  --index-url ${SITE.simpleIndex} \\
-  --extra-index-url https://pypi.org/simple`;

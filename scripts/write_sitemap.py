@@ -3,7 +3,9 @@
 
 Every documentation route is a real `index.html` on disk, so the sitemap is
 simply a walk of the built tree. The package index under `simple/` is excluded:
-it is for pip, not for search engines.
+it is for pip, not for search engines. Routes the app redirects away from are
+prerendered as meta-refresh stubs and are excluded too, so the sitemap only
+lists addresses that actually serve content.
 """
 
 from __future__ import annotations
@@ -17,12 +19,19 @@ from pathlib import Path
 EXCLUDED_DIRS = {"simple", "not-found"}
 
 
+def is_redirect(page: Path) -> bool:
+    """True for the meta-refresh stub the prerenderer writes for a redirect route."""
+    return 'http-equiv="refresh"' in page.read_text(encoding="utf-8", errors="ignore")
+
+
 def page_paths(site: Path) -> list[str]:
     """Site-relative URL paths for every prerendered page, root first."""
     paths: list[str] = []
     for index in site.rglob("index.html"):
         relative = index.relative_to(site).parent
         if relative.parts and relative.parts[0] in EXCLUDED_DIRS:
+            continue
+        if is_redirect(index):
             continue
         paths.append("/".join(relative.parts))
     # The root sorts to "" and so comes first; the rest are alphabetical.

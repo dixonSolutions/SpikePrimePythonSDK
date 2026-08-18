@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { DialogModule } from '@openng/optimus-ui/dialog';
 import { InputTextModule } from '@openng/optimus-ui/inputtext';
 
+import { docPath } from '../content';
 import { SearchService, type SearchHit } from '../core/search';
 
 @Component({
@@ -141,6 +142,6 @@ export class SearchDialog {
   protected go(hit: SearchHit): void {
     this.open.set(false);
     this.query.set('');
-    void this.router.navigate(['/docs', hit.slug], { fragment: hit.fragment });
+    void this.router.navigate(docPath(hit.slug), { fragment: hit.fragment });
   }
 }

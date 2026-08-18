@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
-import { groupOf, neighbours, pageBySlug } from '../content';
+import { docPath, groupOf, neighbours, pageBySlug } from '../content';
 import { SeoService } from '../core/seo';
 import { Sidebar } from '../layout/sidebar';
 import { TableOfContents } from '../layout/toc';
@@ -36,7 +36,7 @@ import { Blocks } from '../shared/blocks';
 
           <nav class="pager" aria-label="Pagination">
             @if (previous(); as previous) {
-              <a class="pager__link pager__link--prev" [routerLink]="['/docs', previous.slug]">
+              <a class="pager__link pager__link--prev" [routerLink]="path(previous.slug)">
                 <span class="pager__label"><i class="pi pi-arrow-left" aria-hidden="true"></i> Previous</span>
                 <span class="pager__title">{{ previous.title }}</span>
               </a>
@@ -44,7 +44,7 @@ import { Blocks } from '../shared/blocks';
               <span></span>
             }
             @if (next(); as next) {
-              <a class="pager__link pager__link--next" [routerLink]="['/docs', next.slug]">
+              <a class="pager__link pager__link--next" [routerLink]="path(next.slug)">
                 <span class="pager__label">Next <i class="pi pi-arrow-right" aria-hidden="true"></i></span>
                 <span class="pager__title">{{ next.title }}</span>
               </a>
@@ -71,6 +71,10 @@ export class DocPageView {
   protected readonly group = computed(() => groupOf(this.slug()));
   protected readonly previous = computed(() => neighbours(this.slug()).previous);
   protected readonly next = computed(() => neighbours(this.slug()).next);
+
+  protected path(slug: string): string[] {
+    return docPath(slug);
+  }
 
   constructor() {
     effect(() => {

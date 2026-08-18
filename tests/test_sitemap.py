@@ -26,6 +26,14 @@ def build_site(root: Path) -> None:
     package = root / "simple" / "spikeprimepythonsdk"
     package.mkdir(parents=True)
     (package / "index.html").write_text("<html></html>", encoding="utf-8")
+    # `docs/overview` is prerendered as a redirect to the home page, which
+    # serves that content. Only the address that answers belongs in the sitemap.
+    redirect = root / "docs" / "overview"
+    redirect.mkdir(parents=True)
+    (redirect / "index.html").write_text(
+        '<html><head><meta http-equiv="refresh" content="0; url=/"></head></html>',
+        encoding="utf-8",
+    )
 
 
 def test_sitemap_lists_pages_and_skips_the_package_index(tmp_path: Path) -> None:
@@ -42,3 +50,4 @@ def test_sitemap_lists_pages_and_skips_the_package_index(tmp_path: Path) -> None
     assert "https://dixonsolutions.github.io/SpikePrimePythonSDK/docs/installation/" in locations
     assert not any("simple" in (location or "") for location in locations)
     assert not any("not-found" in (location or "") for location in locations)
+    assert not any("overview" in (location or "") for location in locations)
